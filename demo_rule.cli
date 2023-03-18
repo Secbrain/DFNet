@@ -1,0 +1,291 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright(c) 2010-2018 Intel Corporation
+
+;                 _______________
+; LINK0 RXQ0 --->|               |---> LINK0 TXQ0
+;                |               |
+; LINK1 RXQ0 --->|               |---> LINK1 TXQ0
+;                |   Firewall    |
+; LINK2 RXQ0 --->|               |---> LINK2 TXQ0
+;                |               |
+; LINK3 RXQ0 --->|               |---> LINK3 TXQ0
+;                |_______________|
+;                        |
+;                       -+-
+;
+; Input packet: Ethernet/IPv4
+;
+; Packet buffer layout:
+; #   Field Name            Offset (Bytes)      Size (Bytes)
+; 0   Mbuf                  0                   128
+; 1   Headroom              128                 128
+; 2   Ethernet header       256                 14
+; 3   IPv4 header           270                 20
+tmgr subport profile 200000000 100000 200000000 200000000 200000000 200000000 200000000 200000000 200000000 200000000 200000000 200000000 200000000 200000000 200000000 1 
+tmgr pipe profile 200000000 100000 200000000 200000000 200000000 200000000 200000000 200000000 200000000 200000000 200000000 200000000 200000000 200000000 200000000  1 1 1 1 1 1
+
+tmgr TM0 rate 2000000000 spp 1 pps 1 fo 24 mtu 15 cpu 0
+tmgr TM0 subport 0 profile 0
+tmgr TM0 subport 0 pipe from 0 to 0 profile 0
+
+tmgr TM1 rate 2000000000 spp 1 pps 1 fo 24 mtu 15 cpu 0
+tmgr TM1 subport 0 profile 0
+tmgr TM1 subport 0 pipe from 0 to 0 profile 0
+
+tmgr TM2 rate 2000000000 spp 1 pps 1 fo 24 mtu 15 cpu 0
+tmgr TM2 subport 0 profile 0
+tmgr TM2 subport 0 pipe from 0 to 0 profile 0
+
+tmgr TM3 rate 2000000000 spp 1 pps 1 fo 24 mtu 15 cpu 0
+tmgr TM3 subport 0 profile 0
+tmgr TM3 subport 0 pipe from 0 to 0 profile 0
+
+tmgr TM4 rate 2000000000 spp 1 pps 1 fo 24 mtu 15 cpu 0
+tmgr TM4 subport 0 profile 0
+tmgr TM4 subport 0 pipe from 0 to 0 profile 0
+
+tmgr TM5 rate 2000000000 spp 1 pps 1 fo 24 mtu 15 cpu 0
+tmgr TM5 subport 0 profile 0
+tmgr TM5 subport 0 pipe from 0 to 0 profile 0
+
+tmgr TM6 rate 2000000000 spp 1 pps 1 fo 24 mtu 15 cpu 0
+tmgr TM6 subport 0 profile 0
+tmgr TM6 subport 0 pipe from 0 to 0 profile 0
+
+tmgr TM7 rate 2000000000 spp 1 pps 1 fo 24 mtu 15 cpu 0
+tmgr TM7 subport 0 profile 0
+tmgr TM7 subport 0 pipe from 0 to 0 profile 0
+
+mempool MEMPOOL0 buffer 4608 pool 64K cache 512 cpu 0
+
+link LINK0 dev 0000:01:00.0 rxq 8 256 MEMPOOL0 txq 8 1024 promiscuous on rss 0 1 2 3 4 5 6 7
+link LINK1 dev 0000:01:00.1 rxq 8 256 MEMPOOL0 txq 8 1024 promiscuous on rss 0 1 2 3 4 5 6 7
+
+table action profile AP0 ipv4 offset 270 fwd
+table action profile AP1 ipv4 offset 270 fwd meter trtcm tc 1 stats pkts
+table action profile AP2 ipv4 offset 270 fwd
+
+pipeline PIPELINE0 period 10 offset_port_id 0 cpu 0
+pipeline PIPELINE0 port in bsz 16 link LINK0 rxq 0
+pipeline PIPELINE0 port in bsz 16 link LINK1 rxq 0
+pipeline PIPELINE0 port out bsz 16 tmgr TM0
+pipeline PIPELINE0 port out bsz 16 link LINK0 txq 0
+pipeline PIPELINE0 table match acl ipv4 offset 270 size 4K action AP0
+pipeline PIPELINE0 table match acl raw offset 270 size 40K action AP1
+pipeline PIPELINE0 port in 0 table 0
+pipeline PIPELINE0 port in 1 table 0
+thread 1 pipeline PIPELINE0 enable
+pipeline PIPELINE0 table 0 rule add match default action fwd table 1
+pipeline PIPELINE0 table 1 meter profile 0 add trtcm cir 46000000000 pir 69000000000 cbs 2048 pbs 2048
+pipeline PIPELINE0 table 1 rule add match default action fwd drop
+
+
+pipeline PIPELINE1 period 10 offset_port_id 0 cpu 0
+pipeline PIPELINE1 port in bsz 16 link LINK0 rxq 1
+pipeline PIPELINE1 port in bsz 16 link LINK1 rxq 1
+pipeline PIPELINE1 port out bsz 16 tmgr TM1
+pipeline PIPELINE1 port out bsz 16 link LINK0 txq 1
+pipeline PIPELINE1 table match acl ipv4 offset 270 size 4K action AP0
+pipeline PIPELINE1 table match acl raw offset 270 size 40K action AP1
+pipeline PIPELINE1 port in 0 table 0
+pipeline PIPELINE1 port in 1 table 0
+thread 2 pipeline PIPELINE1 enable
+pipeline PIPELINE1 table 0 rule add match default action fwd table 1
+pipeline PIPELINE1 table 1 meter profile 0 add trtcm cir 46000000000 pir 69000000000 cbs 2048 pbs 2048
+pipeline PIPELINE1 table 1 rule add match default action fwd drop
+
+pipeline PIPELINE2 period 10 offset_port_id 0 cpu 0
+pipeline PIPELINE2 port in bsz 16 link LINK0 rxq 2
+pipeline PIPELINE2 port in bsz 16 link LINK1 rxq 2
+pipeline PIPELINE2 port out bsz 16 tmgr TM2
+pipeline PIPELINE2 port out bsz 16 link LINK0 txq 2
+pipeline PIPELINE2 table match acl ipv4 offset 270 size 4K action AP0
+pipeline PIPELINE2 table match acl raw offset 270 size 40K action AP1
+pipeline PIPELINE2 port in 0 table 0
+pipeline PIPELINE2 port in 1 table 0
+thread 3 pipeline PIPELINE2 enable
+pipeline PIPELINE2 table 0 rule add match default action fwd table 1
+pipeline PIPELINE2 table 1 meter profile 0 add trtcm cir 46000000000 pir 69000000000 cbs 2048 pbs 2048
+pipeline PIPELINE2 table 1 rule add match default action fwd drop
+
+
+pipeline PIPELINE3 period 10 offset_port_id 0 cpu 0
+
+pipeline PIPELINE3 port in bsz 16 link LINK0 rxq 3
+pipeline PIPELINE3 port in bsz 16 link LINK1 rxq 3
+pipeline PIPELINE3 port out bsz 16 tmgr TM3
+pipeline PIPELINE3 port out bsz 16 link LINK0 txq 3
+pipeline PIPELINE3 table match acl ipv4 offset 270 size 4K action AP0
+pipeline PIPELINE3 table match acl raw offset 270 size 40K action AP1
+pipeline PIPELINE3 port in 0 table 0
+pipeline PIPELINE3 port in 1 table 0
+
+thread 4 pipeline PIPELINE3 enable
+
+pipeline PIPELINE3 table 0 rule add match default action fwd table 1
+pipeline PIPELINE3 table 1 meter profile 0 add trtcm cir 46000000000 pir 69000000000 cbs 2048 pbs 2048
+pipeline PIPELINE3 table 1 rule add match default action fwd drop
+
+
+pipeline PIPELINE4 period 10 offset_port_id 0 cpu 0
+
+pipeline PIPELINE4 port in bsz 16 link LINK0 rxq 4
+pipeline PIPELINE4 port in bsz 16 link LINK1 rxq 4
+pipeline PIPELINE4 port out bsz 16 tmgr TM4
+pipeline PIPELINE4 port out bsz 16 link LINK0 txq 4
+
+pipeline PIPELINE4 table match acl ipv4 offset 270 size 4K action AP0
+pipeline PIPELINE4 table match acl raw offset 270 size 40K action AP1
+pipeline PIPELINE4 port in 0 table 0
+pipeline PIPELINE4 port in 1 table 0
+thread 5 pipeline PIPELINE4 enable
+pipeline PIPELINE4 table 0 rule add match default action fwd table 1
+pipeline PIPELINE4 table 1 meter profile 0 add trtcm cir 46000000000 pir 69000000000 cbs 2048 pbs 2048
+pipeline PIPELINE4 table 1 rule add match default action fwd drop
+
+
+
+pipeline PIPELINE5 period 10 offset_port_id 0 cpu 0
+
+pipeline PIPELINE5 port in bsz 16 link LINK0 rxq 5
+pipeline PIPELINE5 port in bsz 16 link LINK1 rxq 5
+pipeline PIPELINE5 port out bsz 16 tmgr TM5
+pipeline PIPELINE5 port out bsz 16 link LINK0 txq 5
+
+pipeline PIPELINE5 table match acl ipv4 offset 270 size 4K action AP0
+pipeline PIPELINE5 table match acl raw offset 270 size 40K action AP1
+pipeline PIPELINE5 port in 0 table 0
+pipeline PIPELINE5 port in 1 table 0
+thread 6 pipeline PIPELINE5 enable
+pipeline PIPELINE5 table 0 rule add match default action fwd table 1
+pipeline PIPELINE5 table 1 meter profile 0 add trtcm cir 46000000000 pir 69000000000 cbs 2048 pbs 2048
+pipeline PIPELINE5 table 1 rule add match default action fwd drop
+
+
+pipeline PIPELINE6 period 10 offset_port_id 0 cpu 0
+
+pipeline PIPELINE6 port in bsz 16 link LINK0 rxq 6
+pipeline PIPELINE6 port in bsz 16 link LINK1 rxq 6
+pipeline PIPELINE6 port out bsz 16 tmgr TM6
+pipeline PIPELINE6 port out bsz 16 link LINK0 txq 6
+
+pipeline PIPELINE6 table match acl ipv4 offset 270 size 4K action AP0
+pipeline PIPELINE6 table match acl raw offset 270 size 40K action AP1
+pipeline PIPELINE6 port in 0 table 0
+pipeline PIPELINE6 port in 1 table 0
+thread 7 pipeline PIPELINE6 enable
+pipeline PIPELINE6 table 0 rule add match default action fwd table 1
+pipeline PIPELINE6 table 1 meter profile 0 add trtcm cir 46000000000 pir 69000000000 cbs 2048 pbs 2048
+pipeline PIPELINE6 table 1 rule add match default action fwd drop
+
+
+pipeline PIPELINE7 period 10 offset_port_id 0 cpu 0
+
+pipeline PIPELINE7 port in bsz 16 link LINK0 rxq 7
+pipeline PIPELINE7 port in bsz 16 link LINK1 rxq 7
+pipeline PIPELINE7 port out bsz 16 tmgr TM7
+pipeline PIPELINE7 port out bsz 16 link LINK0 txq 7
+
+pipeline PIPELINE7 table match acl ipv4 offset 270 size 4K action AP0
+pipeline PIPELINE7 table match acl raw offset 270 size 40K action AP1
+pipeline PIPELINE7 port in 0 table 0
+pipeline PIPELINE7 port in 1 table 0
+thread 7 pipeline PIPELINE7 enable
+pipeline PIPELINE7 table 0 rule add match default action fwd table 1
+pipeline PIPELINE7 table 1 meter profile 0 add trtcm cir 46000000000 pir 69000000000 cbs 2048 pbs 2048
+pipeline PIPELINE7 table 1 rule add match default action fwd drop
+
+
+
+
+
+pipeline PIPELINE8 period 10 offset_port_id 0 cpu 0
+pipeline PIPELINE8 port in bsz 16 tmgr TM0
+pipeline PIPELINE8 port out bsz 16 link LINK0 txq 0
+pipeline PIPELINE8 port out bsz 16 link LINK1 txq 0
+pipeline PIPELINE8 table match acl ipv4 offset 270 size 4K action AP2
+pipeline PIPELINE8 port in 0 table 0
+thread 1 pipeline PIPELINE8 enable
+pipeline PIPELINE8 table 0 rule add match default action fwd port 0 
+
+
+pipeline PIPELINE9 period 10 offset_port_id 0 cpu 0
+pipeline PIPELINE9 port in bsz 16 tmgr TM1
+pipeline PIPELINE9 port out bsz 16 link LINK0 txq 1
+pipeline PIPELINE9 port out bsz 16 link LINK1 txq 1
+pipeline PIPELINE9 table match acl ipv4 offset 270 size 4K action AP2
+pipeline PIPELINE9 port in 0 table 0
+thread 2 pipeline PIPELINE9 enable
+pipeline PIPELINE9 table 0 rule add match default action fwd port 0 
+
+pipeline PIPELINE10 period 10 offset_port_id 0 cpu 0
+pipeline PIPELINE10 port in bsz 16 tmgr TM2
+pipeline PIPELINE10 port out bsz 16 link LINK0 txq 2
+pipeline PIPELINE10 port out bsz 16 link LINK1 txq 2
+pipeline PIPELINE10 table match acl ipv4 offset 270 size 4K action AP2
+pipeline PIPELINE10 port in 0 table 0
+thread 3 pipeline PIPELINE10 enable
+pipeline PIPELINE10 table 0 rule add match default action fwd port 0 
+
+pipeline PIPELINE11 period 10 offset_port_id 0 cpu 0
+pipeline PIPELINE11 port in bsz 16 tmgr TM3
+pipeline PIPELINE11 port out bsz 16 link LINK0 txq 3
+pipeline PIPELINE11 port out bsz 16 link LINK1 txq 3
+pipeline PIPELINE11 table match acl ipv4 offset 270 size 4K action AP2
+pipeline PIPELINE11 port in 0 table 0
+thread 4 pipeline PIPELINE11 enable
+pipeline PIPELINE11 table 0 rule add match default action fwd port 0 
+
+pipeline PIPELINE12 period 10 offset_port_id 0 cpu 0
+pipeline PIPELINE12 port in bsz 16 tmgr TM4
+pipeline PIPELINE12 port out bsz 16 link LINK0 txq 4
+pipeline PIPELINE12 port out bsz 16 link LINK1 txq 4
+pipeline PIPELINE12 table match acl ipv4 offset 270 size 4K action AP2
+pipeline PIPELINE12 port in 0 table 0
+thread 5 pipeline PIPELINE12 enable
+pipeline PIPELINE12 table 0 rule add match default action fwd port 0 
+
+pipeline PIPELINE13 period 10 offset_port_id 0 cpu 0
+pipeline PIPELINE13 port in bsz 16 tmgr TM5
+pipeline PIPELINE13 port out bsz 16 link LINK0 txq 5
+pipeline PIPELINE13 port out bsz 16 link LINK1 txq 5
+pipeline PIPELINE13 table match acl ipv4 offset 270 size 4K action AP2
+pipeline PIPELINE13 port in 0 table 0
+thread 6 pipeline PIPELINE13 enable
+pipeline PIPELINE13 table 0 rule add match default action fwd port 0 
+
+pipeline PIPELINE14 period 10 offset_port_id 0 cpu 0
+pipeline PIPELINE14 port in bsz 16 tmgr TM6
+pipeline PIPELINE14 port out bsz 16 link LINK0 txq 6
+pipeline PIPELINE14 port out bsz 16 link LINK1 txq 6
+pipeline PIPELINE14 table match acl ipv4 offset 270 size 4K action AP2
+pipeline PIPELINE14 port in 0 table 0
+thread 7 pipeline PIPELINE14 enable
+pipeline PIPELINE14 table 0 rule add match default action fwd port 0 
+
+pipeline PIPELINE15 period 10 offset_port_id 0 cpu 0
+pipeline PIPELINE15 port in bsz 16 tmgr TM7
+pipeline PIPELINE15 port out bsz 16 link LINK0 txq 7
+pipeline PIPELINE15 port out bsz 16 link LINK1 txq 7
+pipeline PIPELINE15 table match acl ipv4 offset 270 size 4K action AP2
+pipeline PIPELINE15 port in 0 table 0
+thread 7 pipeline PIPELINE15 enable
+pipeline PIPELINE15 table 0 rule add match default action fwd port 0 
+
+pipeline PIPELINE0 table 1 rule add match acl priority 1 raw 1 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 action fwd port 0 meter tc0 meter 0 policer g g y y r r
+
+pipeline PIPELINE1 table 1 rule add match acl priority 1 raw 1 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 action fwd port 0 meter tc0 meter 0 policer g g y y r r
+
+pipeline PIPELINE2 table 1 rule add match acl priority 1 raw 1 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 action fwd port 0 meter tc0 meter 0 policer g g y y r r
+
+pipeline PIPELINE3 table 1 rule add match acl priority 1 raw 1 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 action fwd port 0 meter tc0 meter 0 policer g g y y r r
+
+pipeline PIPELINE4 table 1 rule add match acl priority 1 raw 1 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 action fwd port 0 meter tc0 meter 0 policer g g y y r r
+
+pipeline PIPELINE5 table 1 rule add match acl priority 1 raw 1 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 action fwd port 0 meter tc0 meter 0 policer g g y y r r
+
+pipeline PIPELINE6 table 1 rule add match acl priority 1 raw 1 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 action fwd port 0 meter tc0 meter 0 policer g g y y r r
+
+pipeline PIPELINE7 table 1 rule add match acl priority 1 raw 1 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 0 255 action fwd port 0 meter tc0 meter 0 policer g g y y r r
+
+
